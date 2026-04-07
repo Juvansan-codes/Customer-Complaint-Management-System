@@ -1,39 +1,21 @@
-# Python bytecode and cache
+# Python cache
 __pycache__/
 *.py[cod]
-*$py.class
 
-# Virtual environments
+# Virtual environment
 .venv/
 venv/
-env/
-ENV/
 
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-.eggs/
-
-# Logs and runtime files
-*.log
-*.pid
-
-# IDE settings
+# IDE files
 .vscode/
 .idea/
-
-# Test and coverage
-.pytest_cache/
-.coverage
-htmlcov/
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# Local generated assets
-assets/screenshots/
+# Generated output files
+complaints.csv
 
 # Local environment files
 .env

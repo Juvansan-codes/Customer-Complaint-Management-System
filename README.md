@@ -1,62 +1,52 @@
-# Customer Complaint Management System
+# Customer Complaint Management System (Micro Project)
 
-Desktop application for complaint ticket lifecycle management with role-based access for **Customer**, **Agent**, and **Admin**.
+Simple first-year level Python project using Tkinter + MySQL.
 
 ## Tech Stack
 
-- Python 3.10+
-- Tkinter + ttk (desktop UI)
-- MySQL 8.x (`mysql-connector-python`)
-- Matplotlib (embedded admin dashboard charts)
-- Pillow (image handling)
-- bcrypt (password hashing)
+- Python
+- Tkinter (GUI)
+- MySQL (`mysql-connector-python`)
+- Matplotlib (simple graph)
+
+## Project Files
+
+- `main.py`: complete application code
+- `schema.sql`: database schema and sample users
+- `requirements.txt`: required Python packages
 
 ## Features
 
-- Role-based login and routing (Admin, Agent, Customer)
-- Customer ticket submission with auto-priority detection
-- Screenshot attachment and preview for tickets
-- Agent ticket assignment workflow, status updates, and remarks
-- Admin dashboard with charts, filters, reports, and CSV export
-- SLA color coding in ticket tables
+- Register new user (Admin / Agent / Customer)
+- Login using username and password from database
+- Customer: add complaint, view own complaints
+- Agent: view all complaints, update status
+- Admin: view all complaints, update status
+- Admin: export complaints to CSV
+- Admin: show bar graph (Complaints by Status)
 
-## Project Structure
+## Database Tables
 
-- `main.py` - Entry point
-- `database.py` - Database connection and query layer
-- `models.py` - OOP domain models and role logic
-- `utils.py` - Utility functions and constants
-- `image_utils.py` - All Pillow image operations
-- `login_window.py` - Login and role routing
-- `register_window.py` - Customer registration
-- `customer_window.py` - Customer dashboard
-- `agent_window.py` - Agent dashboard
-- `admin_window.py` - Admin dashboard
-- `schema.sql` - MySQL schema and admin seed
-- `requirements.txt` - Python dependencies
+1. `users(username, password, role)`
+2. `complaints(id, username, issue, status)`
 
-## Setup
+## Setup Steps
 
-1. Create and activate a virtual environment.
-2. Install dependencies:
+1. Create and activate virtual environment.
+2. Install packages:
    - `pip install -r requirements.txt`
-3. Run `schema.sql` in MySQL Workbench or MySQL CLI.
-4. Update DB credentials in `database.py`:
-   - `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`
-5. Add your logo file:
-   - `assets/logo.png`
-6. Run the app:
+3. Run `schema.sql` in MySQL Workbench.
+4. Open `main.py` and set database password:
+   - `DB_PASS = "your_password"`
+5. Run app:
    - `python main.py`
 
-## Default Admin
+## Sample Login Users
 
-A seed admin user is inserted by `schema.sql`.
+- Admin: `admin` / `admin123`
+- Agent: `agent1` / `agent123`
+- Customer: `customer1` / `cust123`
 
-- Username: `admin`
-- Password: `admin123`
+## Note
 
-## Notes
-
-- Ensure MySQL service is running before launching the app.
-- Ticket screenshots are saved under `assets/screenshots/`.
-- Grid layout is used for Tkinter window composition.
+This is a beginner-friendly micro project designed for easy explanation in viva.
