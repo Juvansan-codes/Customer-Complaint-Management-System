@@ -15,12 +15,13 @@ DB_NAME = "complaint_db"
 class Complaint:
     """Store complaint values in a simple object."""
 
-    def __init__(self, complaint_id, username, issue, status):
-        """Create complaint object with id, username, issue and status."""
+    def __init__(self, complaint_id, username, issue, status, priority="Low"):
+        """Create complaint object with id, username, issue, status and priority."""
         self.complaint_id = complaint_id
         self.username = username
         self.issue = issue
         self.status = status
+        self.priority = priority
 
 
 def get_connection():
@@ -52,8 +53,15 @@ def setup_database():
         "id INT AUTO_INCREMENT PRIMARY KEY, "
         "username VARCHAR(50), "
         "issue TEXT, "
-        "status VARCHAR(50))"
+        "status VARCHAR(50), "
+        "priority VARCHAR(20))"
     )
+
+    # Add priority column for old tables that do not have it
+    cursor.execute("SHOW COLUMNS FROM complaints LIKE 'priority'")
+    priority_column = cursor.fetchall()
+    if len(priority_column) == 0:
+        cursor.execute("ALTER TABLE complaints ADD COLUMN priority VARCHAR(20) DEFAULT 'Low'")
 
     # If old schema has users.email NOT NULL, make it nullable for this simple app
     cursor.execute("SHOW COLUMNS FROM users LIKE 'email'")
@@ -73,17 +81,38 @@ def clear_window():
 def show_login_page():
     """Show login page widgets."""
     clear_window()
-    tk.Label(root, text="Login Page", font=("Arial", 16, "bold")).grid(row=0, column=0, columnspan=2, pady=10)
-    tk.Label(root, text="Username").grid(row=1, column=0, padx=8, pady=8, sticky="w")
-    username_entry = tk.Entry(root, width=30)
-    username_entry.grid(row=1, column=1, padx=8, pady=8)
-    tk.Label(root, text="Password").grid(row=2, column=0, padx=8, pady=8, sticky="w")
-    password_entry = tk.Entry(root, width=30, show="*")
-    password_entry.grid(row=2, column=1, padx=8, pady=8)
-    tk.Button(root, text="Login", command=lambda: login_user(username_entry.get(), password_entry.get())).grid(
-        row=3, column=1, padx=8, pady=8, sticky="w"
+
+    # Keep one center cell so form stays in the middle of the window
+    root.grid_rowconfigure(0, weight=1)
+    root.grid_rowconfigure(1, weight=0)
+    root.grid_rowconfigure(2, weight=1)
+    root.grid_columnconfigure(0, weight=1)
+    root.grid_columnconfigure(1, weight=0)
+    root.grid_columnconfigure(2, weight=1)
+
+    # Simple form group for clean alignment
+    form_frame = tk.Frame(root)
+    form_frame.grid(row=1, column=1)
+
+    tk.Label(form_frame, text="Login Page", font=("Arial", 16, "bold")).grid(
+        row=0, column=0, columnspan=2, pady=(0, 15)
     )
-    tk.Button(root, text="Go to Register", command=show_register_page).grid(row=4, column=1, padx=8, pady=8, sticky="w")
+    tk.Label(form_frame, text="Username").grid(row=1, column=0, padx=(0, 10), pady=6, sticky="e")
+    username_entry = tk.Entry(form_frame, width=30)
+    username_entry.grid(row=1, column=1, pady=6, sticky="w")
+    tk.Label(form_frame, text="Password").grid(row=2, column=0, padx=(0, 10), pady=6, sticky="e")
+    password_entry = tk.Entry(form_frame, width=30, show="*")
+    password_entry.grid(row=2, column=1, pady=6, sticky="w")
+    tk.Button(
+        form_frame,
+        text="Login",
+        bg="#4CAF50",
+        fg="white",
+        command=lambda: login_user(username_entry.get(), password_entry.get()),
+    ).grid(row=3, column=0, columnspan=2, pady=(12, 6))
+    tk.Button(form_frame, text="Go to Register", bg="#4CAF50", fg="white", command=show_register_page).grid(
+        row=4, column=0, columnspan=2, pady=(4, 0)
+    )
 
 
 def show_register_page():
@@ -102,9 +131,13 @@ def show_register_page():
     tk.Button(
         root,
         text="Register",
+        bg="#4CAF50",
+        fg="white",
         command=lambda: register_user(username_entry.get(), password_entry.get(), role_var.get()),
     ).grid(row=4, column=1, padx=8, pady=8, sticky="w")
-    tk.Button(root, text="Back to Login", command=show_login_page).grid(row=5, column=1, padx=8, pady=8, sticky="w")
+    tk.Button(root, text="Back to Login", bg="#2196F3", fg="white", command=show_login_page).grid(
+        row=5, column=1, padx=8, pady=8, sticky="w"
+    )
 
 
 def register_user(username, password, role):
@@ -159,15 +192,40 @@ def show_customer_page(username):
     tk.Label(root, text="Issue").grid(row=1, column=0, padx=8, pady=8, sticky="w")
     issue_entry = tk.Entry(root, width=40)
     issue_entry.grid(row=1, column=1, padx=8, pady=8, sticky="w")
-    tk.Button(root, text="Add Complaint", command=lambda: add_complaint(username, issue_entry)).grid(
+    tk.Button(root, text="Add Complaint", bg="#4CAF50", fg="white", command=lambda: add_complaint(username, issue_entry)).grid(
         row=2, column=1, padx=8, pady=8, sticky="w"
     )
     complaint_list = tk.Listbox(root, width=90, height=12)
     complaint_list.grid(row=3, column=0, columnspan=2, padx=8, pady=8)
-    tk.Button(root, text="View My Complaints", command=lambda: view_my_complaints(username, complaint_list)).grid(
+    tk.Button(
+        root,
+        text="View My Complaints",
+        bg="#2196F3",
+        fg="white",
+        command=lambda: view_my_complaints(username, complaint_list),
+    ).grid(
         row=4, column=1, padx=8, pady=8, sticky="w"
     )
-    tk.Button(root, text="Logout", command=show_login_page).grid(row=5, column=1, padx=8, pady=8, sticky="w")
+    tk.Button(root, text="Logout", bg="#f44336", fg="white", command=show_login_page).grid(
+        row=5, column=1, padx=8, pady=8, sticky="w"
+    )
+
+
+def detect_priority(issue):
+    """Return complaint priority from simple keyword matching."""
+    # Convert to lowercase so matching is easier
+    text = issue.lower()
+
+    # High priority keywords
+    if "urgent" in text or "immediately" in text or "asap" in text:
+        return "High"
+
+    # Medium priority keywords
+    if "delay" in text or "problem" in text or "error" in text:
+        return "Medium"
+
+    # Default priority
+    return "Low"
 
 
 def add_complaint(username, issue_entry):
@@ -176,12 +234,16 @@ def add_complaint(username, issue_entry):
     if issue == "":
         messagebox.showinfo("Input", "Please write your issue.")
         return
-    complaint = Complaint(None, username, issue, "Open")
+
+    # Detect priority from complaint text
+    priority = detect_priority(issue)
+    complaint = Complaint(None, username, issue, "Open", priority)
+
     connection = get_connection()
     cursor = connection.cursor()
     cursor.execute(
-        "INSERT INTO complaints (username, issue, status) VALUES (%s, %s, %s)",
-        (complaint.username, complaint.issue, complaint.status),
+        "INSERT INTO complaints (username, issue, status, priority) VALUES (%s, %s, %s, %s)",
+        (complaint.username, complaint.issue, complaint.status, complaint.priority),
     )
     connection.commit()
     issue_entry.delete(0, tk.END)
@@ -193,11 +255,16 @@ def view_my_complaints(username, complaint_list):
     complaint_list.delete(0, tk.END)
     connection = get_connection()
     cursor = connection.cursor()
-    cursor.execute("SELECT id, username, issue, status FROM complaints WHERE username = %s", (username,))
+    cursor.execute("SELECT id, username, issue, status, priority FROM complaints WHERE username = %s", (username,))
     rows = cursor.fetchall()
     for row in rows:
-        complaint = Complaint(row[0], row[1], row[2], row[3])
-        line = f"ID: {complaint.complaint_id} | Issue: {complaint.issue} | Status: {complaint.status}"
+        complaint = Complaint(row[0], row[1], row[2], row[3], row[4])
+        line = (
+            f"ID: {complaint.complaint_id} | "
+            f"Issue: {complaint.issue} | "
+            f"Status: {complaint.status} | "
+            f"Priority: {complaint.priority}"
+        )
         complaint_list.insert(tk.END, line)
 
 
@@ -209,7 +276,13 @@ def show_agent_page(username):
     )
     complaint_list = tk.Listbox(root, width=90, height=12)
     complaint_list.grid(row=1, column=0, columnspan=2, padx=8, pady=8)
-    tk.Button(root, text="View All Complaints", command=lambda: view_all_complaints(complaint_list)).grid(
+    tk.Button(
+        root,
+        text="View All Complaints",
+        bg="#2196F3",
+        fg="white",
+        command=lambda: view_all_complaints(complaint_list),
+    ).grid(
         row=2, column=1, padx=8, pady=8, sticky="w"
     )
     tk.Label(root, text="Complaint ID").grid(row=3, column=0, padx=8, pady=8, sticky="w")
@@ -223,10 +296,18 @@ def show_agent_page(username):
     tk.OptionMenu(root, status_var, "Pending", "In Progress", "Resolved", "Closed").grid(
         row=4, column=1, padx=8, pady=8, sticky="w"
     )
-    tk.Button(root, text="Update Status", command=lambda: update_status(id_entry.get(), status_var.get())).grid(
+    tk.Button(
+        root,
+        text="Update Status",
+        bg="#FF9800",
+        fg="white",
+        command=lambda: update_status(id_entry.get(), status_var.get()),
+    ).grid(
         row=5, column=1, padx=8, pady=8, sticky="w"
     )
-    tk.Button(root, text="Logout", command=show_login_page).grid(row=6, column=1, padx=8, pady=8, sticky="w")
+    tk.Button(root, text="Logout", bg="#f44336", fg="white", command=show_login_page).grid(
+        row=6, column=1, padx=8, pady=8, sticky="w"
+    )
 
 
 def show_admin_page(username):
@@ -237,7 +318,13 @@ def show_admin_page(username):
     )
     complaint_list = tk.Listbox(root, width=90, height=12)
     complaint_list.grid(row=1, column=0, columnspan=2, padx=8, pady=8)
-    tk.Button(root, text="View All Complaints", command=lambda: view_all_complaints(complaint_list)).grid(
+    tk.Button(
+        root,
+        text="View All Complaints",
+        bg="#2196F3",
+        fg="white",
+        command=lambda: view_all_complaints(complaint_list),
+    ).grid(
         row=2, column=1, padx=8, pady=8, sticky="w"
     )
     tk.Label(root, text="Complaint ID").grid(row=3, column=0, padx=8, pady=8, sticky="w")
@@ -251,17 +338,29 @@ def show_admin_page(username):
     tk.OptionMenu(root, status_var, "Pending", "In Progress", "Resolved", "Closed").grid(
         row=4, column=1, padx=8, pady=8, sticky="w"
     )
-    tk.Button(root, text="Update Status", command=lambda: update_status(id_entry.get(), status_var.get())).grid(
+    tk.Button(
+        root,
+        text="Update Status",
+        bg="#FF9800",
+        fg="white",
+        command=lambda: update_status(id_entry.get(), status_var.get()),
+    ).grid(
         row=5, column=1, padx=8, pady=8, sticky="w"
     )
 
     # NEW FEATURE 1: Export all complaints to CSV file
-    tk.Button(root, text="Export to CSV", command=export_to_csv).grid(row=6, column=1, padx=8, pady=8, sticky="w")
+    tk.Button(root, text="Export to CSV", bg="#2196F3", fg="white", command=export_to_csv).grid(
+        row=6, column=1, padx=8, pady=8, sticky="w"
+    )
 
     # NEW FEATURE 2: Show bar graph of complaints by status
-    tk.Button(root, text="Show Graph", command=show_graph).grid(row=7, column=1, padx=8, pady=8, sticky="w")
+    tk.Button(root, text="Show Graph", bg="#2196F3", fg="white", command=show_graph).grid(
+        row=7, column=1, padx=8, pady=8, sticky="w"
+    )
 
-    tk.Button(root, text="Logout", command=show_login_page).grid(row=8, column=1, padx=8, pady=8, sticky="w")
+    tk.Button(root, text="Logout", bg="#f44336", fg="white", command=show_login_page).grid(
+        row=8, column=1, padx=8, pady=8, sticky="w"
+    )
 
 
 def view_all_complaints(complaint_list):
@@ -269,15 +368,16 @@ def view_all_complaints(complaint_list):
     complaint_list.delete(0, tk.END)
     connection = get_connection()
     cursor = connection.cursor()
-    cursor.execute("SELECT id, username, issue, status FROM complaints")
+    cursor.execute("SELECT id, username, issue, status, priority FROM complaints")
     rows = cursor.fetchall()
     for row in rows:
-        complaint = Complaint(row[0], row[1], row[2], row[3])
+        complaint = Complaint(row[0], row[1], row[2], row[3], row[4])
         line = (
             f"ID: {complaint.complaint_id} | "
             f"User: {complaint.username} | "
             f"Issue: {complaint.issue} | "
-            f"Status: {complaint.status}"
+            f"Status: {complaint.status} | "
+            f"Priority: {complaint.priority}"
         )
         complaint_list.insert(tk.END, line)
 
